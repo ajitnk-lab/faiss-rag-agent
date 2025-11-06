@@ -1,0 +1,44 @@
+# CDK
+cdk/node_modules/
+cdk/cdk.out/
+cdk/.cdk.staging/
+*.js
+*.d.ts
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv
+
+# Data files (large)
+data/faiss_index.bin
+data/metadata.json
+data/*.json
+data/*.csv
+
+# AWS
+.aws/
+*.pem
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+nohup.out
+
+# Temporary
+tmp/
+temp/

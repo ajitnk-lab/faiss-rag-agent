@@ -1,0 +1,49 @@
+digraph "FAISS RAG Agent Architecture" {
+	graph [fontcolor="#2D3436" fontname="Sans-Serif" fontsize=15 label="FAISS RAG Agent Architecture" nodesep=0.60 pad=2.0 rankdir=LR ranksep=0.75 splines=ortho]
+	node [fixedsize=true fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13 height=1.4 imagescale=true labelloc=b shape=box style=rounded width=1.4]
+	edge [color="#7B8894"]
+	"28e3b3d318d94cb79a8e7bc0605457cd" [label=Users height=1.9 image="/home/ubuntu/.local/lib/python3.10/site-packages/resources/onprem/client/users.png" shape=none]
+	f2dff4824f6d447fa38aea752242140b -> c08c65c2182440b3a15239dc5a1472f4 [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	subgraph cluster_Frontend {
+		graph [bgcolor="#E5F5FD" fontname="Sans-Serif" fontsize=12 label=Frontend labeljust=l pencolor="#AEB6BE" rankdir=LR shape=box style=rounded]
+		f2dff4824f6d447fa38aea752242140b [label="CloudFront
+Chat UI" height=2.3 image="/home/ubuntu/.local/lib/python3.10/site-packages/resources/aws/network/cloudfront.png" shape=none]
+		c08c65c2182440b3a15239dc5a1472f4 [label="S3
+Static Site" height=2.3 image="/home/ubuntu/.local/lib/python3.10/site-packages/resources/aws/storage/simple-storage-service-s3.png" shape=none]
+	}
+	subgraph "cluster_API Layer" {
+		graph [bgcolor="#E5F5FD" fontname="Sans-Serif" fontsize=12 label="API Layer" labeljust=l pencolor="#AEB6BE" rankdir=LR shape=box style=rounded]
+		e08c228af6404f25ab04ef2ee8fc893f [label="API Gateway
+/query" height=2.3 image="/home/ubuntu/.local/lib/python3.10/site-packages/resources/aws/network/api-gateway.png" shape=none]
+	}
+	subgraph cluster_Backend {
+		graph [bgcolor="#E5F5FD" fontname="Sans-Serif" fontsize=12 label=Backend labeljust=l pencolor="#AEB6BE" rankdir=LR shape=box style=rounded]
+		"640d11d712944fba9987b225a20f915c" [label="Lambda
+Docker Container
+(FAISS + Python)" height=2.7 image="/home/ubuntu/.local/lib/python3.10/site-packages/resources/aws/compute/lambda.png" shape=none]
+		subgraph cluster_Data {
+			graph [bgcolor="#EBF3E7" fontname="Sans-Serif" fontsize=12 label=Data labeljust=l pencolor="#AEB6BE" rankdir=LR shape=box style=rounded]
+			"70b7f06064a74dae93e38571a861d397" [label="S3
+FAISS Index
+(3.6 MB)" height=2.7 image="/home/ubuntu/.local/lib/python3.10/site-packages/resources/aws/storage/simple-storage-service-s3.png" shape=none]
+		}
+		subgraph "cluster_AI Models" {
+			graph [bgcolor="#EBF3E7" fontname="Sans-Serif" fontsize=12 label="AI Models" labeljust=l pencolor="#AEB6BE" rankdir=LR shape=box style=rounded]
+			f32dadc3dc9c48ee93c3e3a7d2e0e166 [label="Nova Pro
+LLM" height=2.3 image="/home/ubuntu/.local/lib/python3.10/site-packages/resources/aws/ml/bedrock.png" shape=none]
+			"6359dd564d8441799c0c7dba70c58025" [label="Titan v2
+Embeddings" height=2.3 image="/home/ubuntu/.local/lib/python3.10/site-packages/resources/aws/ml/bedrock.png" shape=none]
+		}
+	}
+	"28e3b3d318d94cb79a8e7bc0605457cd" -> f2dff4824f6d447fa38aea752242140b [label=HTTPS dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	"28e3b3d318d94cb79a8e7bc0605457cd" -> e08c228af6404f25ab04ef2ee8fc893f [label=Query dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	e08c228af6404f25ab04ef2ee8fc893f -> "640d11d712944fba9987b225a20f915c" [label=Invoke dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	"640d11d712944fba9987b225a20f915c" -> "70b7f06064a74dae93e38571a861d397" [label="Load Index
+(cold start)" dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	"640d11d712944fba9987b225a20f915c" -> "6359dd564d8441799c0c7dba70c58025" [label="Generate
+Embedding" dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	"640d11d712944fba9987b225a20f915c" -> f32dadc3dc9c48ee93c3e3a7d2e0e166 [label="Generate
+Response" dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	"640d11d712944fba9987b225a20f915c" -> e08c228af6404f25ab04ef2ee8fc893f [label=Results dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	e08c228af6404f25ab04ef2ee8fc893f -> "28e3b3d318d94cb79a8e7bc0605457cd" [label=JSON dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+}
