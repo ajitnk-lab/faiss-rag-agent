@@ -8,6 +8,7 @@ import os
 import faiss
 import numpy as np
 import time
+from datetime import datetime
 from typing import List, Dict
 
 # Global cache for multiple org indexes
@@ -15,6 +16,96 @@ index_cache = {}
 metadata_cache = {}
 s3_client = None
 bedrock_client = None
+dynamodb = None
+
+def get_user_id(event):
+    """Generate user ID from IP and user agent."""
+    source_ip = event.get('requestContext', {}).get('identity', {}).get('sourceIp', 'unknown')
+    user_agent = event.get('headers', {}).get('User-Agent', '')
+    
+    # Create simple fingerprint
+    fingerprint = f"{source_ip}_{hash(user_agent) % 10000}"
+    return fingerprint
+
+def check_usage_limits(user_id: str, tier: str = 'anonymous'):
+    """Check if user has exceeded usage limits."""
+    global dynamodb
+    
+    if dynamodb is None:
+        dynamodb = boto3.resource('dynamodb')
+    
+    table = dynamodb.Table(os.environ['USAGE_TABLE'])
+    today = datetime.now().strftime('%Y-%m-%d')
+    
+    try:
+        # Get current usage
+        response = table.get_item(
+            Key={'user_id': user_id, 'date': today}
+        )
+        
+        current_count = response.get('Item', {}).get('count', 0)
+        
+        # Define limits
+        limits = {
+            'anonymous': 3,
+            'free': 10,
+            'pro': float('inf')
+        }
+        
+        limit = limits.get(tier, 3)
+        searches_remaining = max(0, limit - current_count)
+        
+        return {
+            'allowed': current_count < limit,
+            'searches_used': current_count,
+            'searches_remaining': searches_remaining,
+            'tier': tier,
+            'upgrade_needed': current_count >= limit
+        }
+        
+    except Exception as e:
+        print(f"Error checking usage: {e}")
+        # Allow on error
+        return {
+            'allowed': True,
+            'searches_used': 0,
+            'searches_remaining': 3,
+            'tier': tier,
+            'upgrade_needed': False
+        }
+
+def increment_usage(user_id: str, tier: str = 'anonymous'):
+    """Increment usage count for user."""
+    global dynamodb
+    
+    if dynamodb is None:
+        dynamodb = boto3.resource('dynamodb')
+    
+    table = dynamodb.Table(os.environ['USAGE_TABLE'])
+    today = datetime.now().strftime('%Y-%m-%d')
+    timestamp = datetime.now().isoformat()
+    
+    try:
+        table.put_item(
+            Item={
+                'user_id': user_id,
+                'date': today,
+                'count': 1,
+                'tier': tier,
+                'timestamp': timestamp
+            },
+            ConditionExpression='attribute_not_exists(user_id)'
+        )
+    except dynamodb.meta.client.exceptions.ConditionalCheckFailedException:
+        # Item exists, increment count
+        table.update_item(
+            Key={'user_id': user_id, 'date': today},
+            UpdateExpression='ADD #count :inc SET #timestamp = :timestamp',
+            ExpressionAttributeNames={'#count': 'count', '#timestamp': 'timestamp'},
+            ExpressionAttributeValues={':inc': 1, ':timestamp': timestamp}
+        )
+    except Exception as e:
+        print(f"Error incrementing usage: {e}")
 
 def load_index_for_org(org: str):
     """Load FAISS index and metadata for specific org (cached)."""
@@ -151,7 +242,7 @@ Answer:"""
     return answer
 
 def lambda_handler(event, context):
-    """Main Lambda handler supporting multi-org queries."""
+    """Main Lambda handler supporting multi-org queries with usage tracking."""
     start_time = time.time()
     
     try:
@@ -172,8 +263,38 @@ def lambda_handler(event, context):
                 'body': json.dumps({'error': 'Query parameter required'})
             }
         
+        # Get user ID and check usage limits
+        user_id = get_user_id(event)
+        usage_info = check_usage_limits(user_id, 'anonymous')
+        
         print(f"🔍 Query: {query}")
         print(f"🏢 Organization: {org}")
+        print(f"👤 User: {user_id}")
+        print(f"📊 Usage: {usage_info}")
+        
+        # Check if user has exceeded limits
+        if not usage_info['allowed']:
+            return {
+                'statusCode': 429,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
+                'body': json.dumps({
+                    'error': 'Usage limit exceeded',
+                    'message': 'You have reached your free search limit. Sign up for more searches!',
+                    'usage': usage_info,
+                    'upgrade_url': 'https://marketplace.cloudnestle.com/register'
+                })
+            }
+        
+        # Increment usage count
+        increment_usage(user_id, 'anonymous')
+        
+        # Update usage info after increment
+        usage_info['searches_used'] += 1
+        usage_info['searches_remaining'] = max(0, usage_info['searches_remaining'] - 1)
+        usage_info['upgrade_needed'] = usage_info['searches_remaining'] == 0
         
         # Load index for requested org
         index, metadata = load_index_for_org(org)
@@ -199,6 +320,7 @@ def lambda_handler(event, context):
             'body': json.dumps({
                 'answer': answer,
                 'results': results,
+                'usage': usage_info,
                 'org': org,
                 'total_time': round(total_time, 2)
             })

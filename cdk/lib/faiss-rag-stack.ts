@@ -9,6 +9,7 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as targets from 'aws-cdk-lib/aws-route53-targets';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
+import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { Construct } from 'constructs';
 
 export class FaissRagStack extends cdk.Stack {
@@ -22,6 +23,15 @@ export class FaissRagStack extends cdk.Stack {
       `faiss-rag-agent-vectors-${this.account}`
     );
 
+    // DynamoDB table for usage tracking
+    const usageTable = new dynamodb.Table(this, 'UsageTable', {
+      tableName: 'aws-finder-usage',
+      partitionKey: { name: 'user_id', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'date', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
     // Lambda function using container image for FAISS
     const queryFunction = new lambda.DockerImageFunction(this, 'QueryFunction', {
       code: lambda.DockerImageCode.fromImageAsset('../lambda'),
@@ -33,11 +43,13 @@ export class FaissRagStack extends cdk.Stack {
         METADATA_KEY: 'metadata.json',
         MODEL_ID: 'us.amazon.nova-pro-v1:0',
         EMBEDDING_MODEL_ID: 'amazon.titan-embed-text-v2:0',
+        USAGE_TABLE: usageTable.tableName,
       },
     });
 
     // Grant permissions
     indexBucket.grantRead(queryFunction);
+    usageTable.grantReadWriteData(queryFunction);
     
     queryFunction.addToRolePolicy(new iam.PolicyStatement({
       actions: ['bedrock:InvokeModel'],
