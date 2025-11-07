@@ -44,6 +44,8 @@ def check_usage_limits(user_id: str, tier: str = 'anonymous'):
         )
         
         current_count = response.get('Item', {}).get('count', 0)
+        if hasattr(current_count, '__float__'):  # Handle Decimal objects
+            current_count = int(current_count)
         
         # Define limits
         limits = {
@@ -292,8 +294,8 @@ def lambda_handler(event, context):
         increment_usage(user_id, 'anonymous')
         
         # Update usage info after increment
-        usage_info['searches_used'] += 1
-        usage_info['searches_remaining'] = max(0, usage_info['searches_remaining'] - 1)
+        usage_info['searches_used'] = int(usage_info['searches_used']) + 1
+        usage_info['searches_remaining'] = max(0, int(usage_info['searches_remaining']) - 1)
         usage_info['upgrade_needed'] = usage_info['searches_remaining'] == 0
         
         # Load index for requested org
