@@ -91,8 +91,15 @@ def main(json_file, output_index, output_metadata):
     print(f"   Dimension: {embeddings.shape[1]}")
 
 if __name__ == '__main__':
-    json_file = '/persistent/home/ubuntu/workspace/faiss-rag-agent/data/repos_mvp.json'
-    output_index = '/persistent/home/ubuntu/workspace/faiss-rag-agent/data/faiss_index.bin'
-    output_metadata = '/persistent/home/ubuntu/workspace/faiss-rag-agent/data/metadata.json'
+    import argparse
     
+    parser = argparse.ArgumentParser(description='Build FAISS index from JSON data')
+    parser.add_argument('--org', default='aws-samples', help='GitHub organization name')
+    args = parser.parse_args()
+    
+    json_file = f'/persistent/home/ubuntu/workspace/faiss-rag-agent/data/repos_{args.org}.json'
+    output_index = f'/persistent/home/ubuntu/workspace/faiss-rag-agent/data/faiss_index_{args.org}.bin'
+    output_metadata = f'/persistent/home/ubuntu/workspace/faiss-rag-agent/data/metadata_{args.org}.json'
+    
+    print(f"🔨 Building FAISS index for {args.org}...")
     main(json_file, output_index, output_metadata)

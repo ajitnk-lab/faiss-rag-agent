@@ -82,14 +82,16 @@ def transform_csv_to_json(bucket_name, csv_key, output_file, limit=None):
     return documents
 
 if __name__ == '__main__':
-    # Default: aws-samples bucket with 10 repos for MVP
-    bucket = 'aws-github-repo-classification-aws-samples'
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='Transform classification CSV to JSON')
+    parser.add_argument('--org', default='aws-samples', help='GitHub organization name')
+    parser.add_argument('--limit', type=int, help='Limit number of repos (for testing)')
+    args = parser.parse_args()
+    
+    bucket = f'aws-github-repo-classification-{args.org}'
     csv_key = 'results/classification_results.csv'
-    output = '/persistent/home/ubuntu/workspace/faiss-rag-agent/data/repos_mvp.json'
+    output = f'/persistent/home/ubuntu/workspace/faiss-rag-agent/data/repos_{args.org}.json'
     
-    if len(sys.argv) > 1:
-        limit = int(sys.argv[1])
-    else:
-        limit = 10  # MVP: 10 repos
-    
-    transform_csv_to_json(bucket, csv_key, output, limit=limit)
+    print(f"🔄 Transforming {args.org} classification data...")
+    transform_csv_to_json(bucket, csv_key, output, limit=args.limit)

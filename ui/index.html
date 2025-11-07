@@ -3,108 +3,256 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AWS Repository Search Agent</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; }
-        .container { max-width: 900px; margin: 0 auto; padding: 20px; }
-        .header { background: #232f3e; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
-        .chat-box { background: white; height: 500px; overflow-y: auto; padding: 20px; border-left: 1px solid #ddd; border-right: 1px solid #ddd; }
-        .message { margin-bottom: 15px; padding: 10px; border-radius: 8px; }
-        .user { background: #e3f2fd; margin-left: 20%; }
-        .agent { background: #f5f5f5; margin-right: 20%; }
-        .repo-card { background: #fff3cd; padding: 10px; margin: 5px 0; border-left: 3px solid #ff9900; }
-        .input-area { background: white; padding: 15px; border-radius: 0 0 8px 8px; border: 1px solid #ddd; display: flex; gap: 10px; }
-        input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
-        button { padding: 10px 20px; background: #ff9900; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        button:hover { background: #ec7211; }
-        button:disabled { background: #ccc; cursor: not-allowed; }
-        .loading { color: #666; font-style: italic; }
-    </style>
+    <title>AWS Solution Finder - Find AWS Solutions in 10 Seconds</title>
+    <meta name="description" content="AI-powered search for 10,000+ AWS repositories. Find production-ready solutions in seconds, not hours.">
+    <link rel="stylesheet" href="css/landing.css">
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🔍 AWS Repository Search Agent</h1>
-            <p>Powered by Bedrock Agent + FAISS + Nova Pro</p>
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <h1 class="hero-title">
+                    Find AWS Solutions in <span class="highlight">10 Seconds</span>
+                </h1>
+                <p class="hero-subtitle">
+                    AI-powered search across 10,000+ AWS repositories. Get production-ready solutions with quality scoring, setup time estimates, and intelligent recommendations.
+                </p>
+                <div class="hero-buttons">
+                    <a href="/search" class="btn btn-primary">Try Free Demo</a>
+                    <a href="https://marketplace.cloudnestle.com/register" class="btn btn-secondary">Start Free Trial</a>
+                </div>
+                <div class="hero-stats">
+                    <div class="stat">
+                        <span class="stat-number">10,000+</span>
+                        <span class="stat-label">AWS Repositories</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-number">99.7%</span>
+                        <span class="stat-label">Cost Reduction</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-number">10 Sec</span>
+                        <span class="stat-label">Average Search</span>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="chat-box" id="chatBox"></div>
-        <div class="input-area">
-            <input type="text" id="queryInput" placeholder="Ask about AWS repositories..." onkeypress="if(event.key==='Enter') sendMessage()">
-            <button onclick="sendMessage()" id="sendBtn">Send</button>
+    </section>
+
+    <!-- Value Propositions Section -->
+    <section class="features">
+        <div class="container">
+            <h2 class="section-title">Why Choose AWS Solution Finder?</h2>
+            <div class="features-grid">
+                <!-- Feature 1: Time Savings -->
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3 class="feature-title">Save Hours of Research</h3>
+                    <p class="feature-description">
+                        Find AWS solutions in 10 seconds instead of 2 hours. Stop browsing through thousands of repositories manually.
+                    </p>
+                    <ul class="feature-benefits">
+                        <li>Instant semantic search</li>
+                        <li>Natural language queries</li>
+                        <li>No more endless scrolling</li>
+                    </ul>
+                </div>
+
+                <!-- Feature 2: Quality Filtering -->
+                <div class="feature-card">
+                    <div class="feature-icon">✅</div>
+                    <h3 class="feature-title">Production-Ready Quality</h3>
+                    <p class="feature-description">
+                        Only well-maintained, production-ready solutions. Every repository is scored for freshness, complexity, and reliability.
+                    </p>
+                    <ul class="feature-benefits">
+                        <li>Freshness scoring</li>
+                        <li>Maintenance status</li>
+                        <li>Setup complexity rating</li>
+                    </ul>
+                </div>
+
+                <!-- Feature 3: AI Intelligence -->
+                <div class="feature-card">
+                    <div class="feature-icon">🧠</div>
+                    <h3 class="feature-title">AI-Powered Recommendations</h3>
+                    <p class="feature-description">
+                        Amazon Nova Pro analyzes your needs and suggests the best-fit solutions with context and explanations.
+                    </p>
+                    <ul class="feature-benefits">
+                        <li>Contextual recommendations</li>
+                        <li>Smart filtering</li>
+                        <li>Personalized results</li>
+                    </ul>
+                </div>
+
+                <!-- Feature 4: Comprehensive Coverage -->
+                <div class="feature-card">
+                    <div class="feature-icon">📚</div>
+                    <h3 class="feature-title">Complete AWS Ecosystem</h3>
+                    <p class="feature-description">
+                        Search across AWS Labs, Samples, and Solutions repositories. Complete coverage of the AWS ecosystem in one place.
+                    </p>
+                    <ul class="feature-benefits">
+                        <li>10,000+ repositories indexed</li>
+                        <li>All AWS organizations</li>
+                        <li>Real-time updates</li>
+                    </ul>
+                </div>
+            </div>
         </div>
-    </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section class="pricing">
+        <div class="container">
+            <h2 class="section-title">Simple, Transparent Pricing</h2>
+            <p class="section-subtitle">Choose the plan that fits your needs. Upgrade or downgrade anytime.</p>
+            
+            <div class="pricing-grid">
+                <!-- Free Tier -->
+                <div class="pricing-card">
+                    <div class="pricing-header">
+                        <h3 class="pricing-title">Free</h3>
+                        <div class="pricing-price">
+                            <span class="price-amount">$0</span>
+                            <span class="price-period">/month</span>
+                        </div>
+                        <p class="pricing-description">Perfect for trying out the platform</p>
+                    </div>
+                    <ul class="pricing-features">
+                        <li>✅ 10 searches per day</li>
+                        <li>✅ AWS Labs repositories</li>
+                        <li>✅ Basic search functionality</li>
+                        <li>✅ Community support</li>
+                        <li>❌ Advanced filtering</li>
+                        <li>❌ Saved searches</li>
+                        <li>❌ Priority support</li>
+                    </ul>
+                    <a href="/search" class="btn btn-outline">Try Free Demo</a>
+                </div>
+
+                <!-- Pro Tier -->
+                <div class="pricing-card pricing-featured">
+                    <div class="pricing-badge">Most Popular</div>
+                    <div class="pricing-header">
+                        <h3 class="pricing-title">Pro</h3>
+                        <div class="pricing-price">
+                            <span class="price-amount">$29</span>
+                            <span class="price-period">/month</span>
+                        </div>
+                        <p class="pricing-description">For developers and small teams</p>
+                    </div>
+                    <ul class="pricing-features">
+                        <li>✅ Unlimited searches</li>
+                        <li>✅ All AWS repositories (10,000+)</li>
+                        <li>✅ Advanced filtering & sorting</li>
+                        <li>✅ Save searches & favorites</li>
+                        <li>✅ Export results to CSV</li>
+                        <li>✅ Email support</li>
+                        <li>✅ Usage analytics</li>
+                    </ul>
+                    <a href="https://marketplace.cloudnestle.com/products/aws-solution-finder" class="btn btn-primary">Start Free Trial</a>
+                </div>
+
+                <!-- Enterprise Tier -->
+                <div class="pricing-card">
+                    <div class="pricing-header">
+                        <h3 class="pricing-title">Enterprise</h3>
+                        <div class="pricing-price">
+                            <span class="price-amount">$299</span>
+                            <span class="price-period">/month</span>
+                        </div>
+                        <p class="pricing-description">For large teams and organizations</p>
+                    </div>
+                    <ul class="pricing-features">
+                        <li>✅ Everything in Pro</li>
+                        <li>✅ Private repository indexing</li>
+                        <li>✅ SSO integration</li>
+                        <li>✅ Custom branding</li>
+                        <li>✅ API access</li>
+                        <li>✅ Priority support</li>
+                        <li>✅ Custom integrations</li>
+                    </ul>
+                    <a href="https://marketplace.cloudnestle.com/catalog" class="btn btn-outline">Contact Sales</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta">
+        <div class="container">
+            <div class="cta-content">
+                <h2 class="cta-title">Ready to Find Your Perfect AWS Solution?</h2>
+                <p class="cta-subtitle">Join thousands of developers who save hours every week with AWS Solution Finder.</p>
+                <div class="cta-buttons">
+                    <a href="/search" class="btn btn-primary btn-large">Try Free Demo</a>
+                    <a href="https://marketplace.cloudnestle.com/register" class="btn btn-secondary btn-large">Start Free Trial</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>AWS Solution Finder</h4>
+                    <p>AI-powered search for AWS repositories</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="/search">Demo</a></li>
+                        <li><a href="#pricing">Pricing</a></li>
+                        <li><a href="https://marketplace.cloudnestle.com">Marketplace</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Support</h4>
+                    <ul>
+                        <li><a href="https://marketplace.cloudnestle.com/contact">Contact</a></li>
+                        <li><a href="https://marketplace.cloudnestle.com/help">Help Center</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 CloudNetsle. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
 
     <script>
-        const API_URL = 'https://5to8z1h4ue.execute-api.us-east-1.amazonaws.com/prod/query';
-
-        function addMessage(text, isUser, repos = []) {
-            const chatBox = document.getElementById('chatBox');
-            const msg = document.createElement('div');
-            msg.className = `message ${isUser ? 'user' : 'agent'}`;
-            
-            let html = `<div>${text}</div>`;
-            if (repos.length > 0) {
-                html += '<div style="margin-top: 10px;">';
-                repos.forEach(repo => {
-                    html += `<div class="repo-card">
-                        <strong>${repo.repository}</strong><br>
-                        <small>Language: ${repo.primary_language} | Services: ${repo.aws_services}</small><br>
-                        <small>Score: ${repo.similarity_score.toFixed(3)}</small>
-                    </div>`;
-                });
-                html += '</div>';
-            }
-            
-            msg.innerHTML = html;
-            chatBox.appendChild(msg);
-            chatBox.scrollTop = chatBox.scrollHeight;
+        // Simple analytics tracking
+        function trackEvent(event, data) {
+            console.log('Event:', event, data);
+            // TODO: Add Google Analytics or other tracking
         }
 
-        async function sendMessage() {
-            const input = document.getElementById('queryInput');
-            const btn = document.getElementById('sendBtn');
-            const query = input.value.trim();
-            
-            if (!query) return;
-            
-            addMessage(query, true);
-            input.value = '';
-            btn.disabled = true;
-            
-            addMessage('Searching repositories...', false);
-            
-            try {
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ query }),
+        // Track CTA clicks
+        document.querySelectorAll('.btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                trackEvent('cta_click', {
+                    text: e.target.textContent,
+                    href: e.target.href
                 });
+            });
+        });
 
-                const data = await response.json();
-                
-                // Remove loading message
-                const chatBox = document.getElementById('chatBox');
-                chatBox.removeChild(chatBox.lastChild);
-                
-                if (data.answer) {
-                    addMessage(data.answer, false, data.repositories || []);
-                } else {
-                    addMessage('Error: Unable to get response', false);
+        // Track scroll depth
+        let maxScroll = 0;
+        window.addEventListener('scroll', () => {
+            const scrollPercent = Math.round((window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100);
+            if (scrollPercent > maxScroll) {
+                maxScroll = scrollPercent;
+                if (maxScroll % 25 === 0) {
+                    trackEvent('scroll_depth', { percent: maxScroll });
                 }
-            } catch (error) {
-                const chatBox = document.getElementById('chatBox');
-                chatBox.removeChild(chatBox.lastChild);
-                addMessage(`Error: ${error.message}`, false);
             }
-            
-            btn.disabled = false;
-        }
-
-        // Welcome message
-        addMessage('Hello! I can help you find AWS sample repositories. Try asking: "Show me serverless Lambda examples with DynamoDB"', false);
+        });
     </script>
 </body>
 </html>

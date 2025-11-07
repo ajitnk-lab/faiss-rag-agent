@@ -92,13 +92,47 @@ export class FaissRagStack extends cdk.Stack {
       },
     });
 
+    // CloudFront function for URL rewriting
+    const urlRewriteFunction = new cloudfront.Function(this, 'UrlRewriteFunction', {
+      code: cloudfront.FunctionCode.fromInline(`
+        function handler(event) {
+          var request = event.request;
+          var uri = request.uri;
+          
+          // Handle /search route
+          if (uri === '/search' || uri === '/search/') {
+            request.uri = '/search.html';
+          }
+          // Handle root route
+          else if (uri === '/' || uri === '') {
+            request.uri = '/index.html';
+          }
+          // Handle other routes without extension
+          else if (!uri.includes('.') && !uri.endsWith('/')) {
+            request.uri = uri + '.html';
+          }
+          
+          return request;
+        }
+      `),
+    });
+
     // CloudFront distribution
     const distribution = new cloudfront.Distribution(this, 'UIDistribution', {
       defaultBehavior: {
         origin: new origins.S3Origin(uiBucket),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        functionAssociations: [{
+          function: urlRewriteFunction,
+          eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
+        }],
       },
       defaultRootObject: 'index.html',
+      errorResponses: [{
+        httpStatus: 404,
+        responseHttpStatus: 200,
+        responsePagePath: '/index.html',
+      }],
     });
 
     // Grant CloudFront access to S3

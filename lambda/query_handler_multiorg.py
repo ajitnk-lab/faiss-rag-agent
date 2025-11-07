@@ -108,33 +108,23 @@ def generate_response(query: str, context: List[Dict]) -> str:
     
     start_time = time.time()
     
-    # Build context with more details
+    # Build context
     context_text = "\n\n".join([
-        f"#{i+1}. {r['repository']}\n"
-        f"   - Solution Type: {r.get('solution_type', 'N/A')}\n"
-        f"   - Competency: {r.get('competency', 'N/A')}\n"
-        f"   - AWS Services: {r.get('aws_services', 'N/A')}\n"
-        f"   - Language: {r.get('primary_language', 'N/A')}\n"
-        f"   - Problem Solved: {r.get('customer_problems', 'N/A')}"
-        for i, r in enumerate(context[:5])
+        f"Repository: {r['repository']}\n"
+        f"Type: {r.get('solution_type', 'N/A')}\n"
+        f"Description: {r.get('description', 'N/A')}\n"
+        f"AWS Services: {r.get('aws_services', 'N/A')}\n"
+        f"Use Case: {r.get('customer_problems', 'N/A')}"
+        for r in context[:3]
     ])
     
-    prompt = f"""You are analyzing search results from a FAISS vector database of AWS sample repositories.
+    prompt = f"""Based on these AWS repositories, answer the question:
 
-TOP 5 MOST RELEVANT REPOSITORIES FOR THIS QUERY:
 {context_text}
 
-User's Question: {query}
+Question: {query}
 
-CRITICAL INSTRUCTIONS:
-- Your answer MUST be based ONLY on the repositories listed above
-- Start by saying "Based on the search results, here are the most relevant repositories:"
-- List each repository by its EXACT name (e.g., aws-samples/aws-dynamodb-examples)
-- Explain why each is relevant based on its competency and AWS services
-- Do NOT suggest any repositories not in the list above
-- Do NOT provide general AWS advice - focus on these specific repos
-
-Answer:"""
+Provide a helpful answer with specific repository recommendations."""
     
     response = bedrock_client.invoke_model(
         modelId='us.amazon.nova-pro-v1:0',
