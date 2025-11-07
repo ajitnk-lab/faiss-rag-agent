@@ -42,28 +42,71 @@
     <script>
         const API_URL = 'https://5to8z1h4ue.execute-api.us-east-1.amazonaws.com/prod/query';
 
+        // Get API key from URL parameter
+        function getApiKeyFromUrl() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('apikey');
+        }
+
+        // Store API key for session
+        let userApiKey = getApiKeyFromUrl();
+        if (userApiKey) {
+            localStorage.setItem('aws_finder_api_key', userApiKey);
+            // Clean URL to remove API key from address bar
+            const url = new URL(window.location);
+            url.searchParams.delete('apikey');
+            window.history.replaceState({}, document.title, url);
+        } else {
+            // Try to get from localStorage
+            userApiKey = localStorage.getItem('aws_finder_api_key');
+        }
+
         function showUsageInfo(usage) {
             const usageDiv = document.createElement('div');
             usageDiv.className = 'usage-info';
-            const color = usage.searches_remaining > 1 ? '#28a745' : usage.searches_remaining === 1 ? '#ffc107' : '#dc3545';
-            const progress = ((usage.searches_used / (usage.searches_used + usage.searches_remaining)) * 100);
+            
+            let remainingText = usage.searches_remaining;
+            if (remainingText === 'unlimited') {
+                remainingText = '∞ unlimited';
+            }
+            
+            const color = usage.searches_remaining === 'unlimited' ? '#28a745' : 
+                         usage.searches_remaining > 1 ? '#28a745' : 
+                         usage.searches_remaining === 1 ? '#ffc107' : '#dc3545';
+            
+            const progress = usage.searches_remaining === 'unlimited' ? 100 :
+                           ((usage.searches_used / (usage.searches_used + usage.searches_remaining)) * 100);
+            
+            let tierBadge = '';
+            if (usage.tier === 'free') {
+                tierBadge = '<span style="background: #17a2b8; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; margin-left: 8px;">FREE TIER</span>';
+            } else if (usage.tier === 'pro') {
+                tierBadge = '<span style="background: #28a745; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; margin-left: 8px;">PRO</span>';
+            }
             
             usageDiv.innerHTML = `
                 <div style="background: #f8f9fa; padding: 12px; margin: 10px 0; border-radius: 6px; border-left: 4px solid ${color};">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <span style="font-weight: 600; color: #495057;">📊 Search Usage</span>
-                        <span style="color: ${color}; font-weight: 600;">${usage.searches_remaining} remaining</span>
+                        <span style="font-weight: 600; color: #495057;">📊 Search Usage ${tierBadge}</span>
+                        <span style="color: ${color}; font-weight: 600;">${remainingText} remaining</span>
                     </div>
+                    ${usage.searches_remaining !== 'unlimited' ? `
                     <div style="width: 100%; background: #e9ecef; border-radius: 10px; height: 8px;">
                         <div style="width: ${progress}%; background: ${color}; height: 8px; border-radius: 10px; transition: width 0.3s;"></div>
                     </div>
-                    ${usage.upgrade_needed ? '<div style="margin-top: 8px; color: #dc3545; font-size: 12px;">⚠️ Next search will require signup</div>' : ''}
+                    ` : ''}
+                    ${usage.user_context && usage.user_context.email ? `
+                    <div style="margin-top: 8px; color: #6c757d; font-size: 12px;">
+                        👤 ${usage.user_context.email}
+                    </div>
+                    ` : ''}
+                    ${usage.upgrade_needed ? '<div style="margin-top: 8px; color: #dc3545; font-size: 12px;">⚠️ Next search will require upgrade</div>' : ''}
                 </div>
             `;
             document.getElementById('chatBox').appendChild(usageDiv);
         }
 
-        function showUpgradeModal() {
+        function showUpgradeModal(upgradeUrl) {
             const modal = document.createElement('div');
             modal.innerHTML = `
                 <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; align-items: center; justify-content: center;">
@@ -72,18 +115,14 @@
                             <div style="font-size: 48px; margin-bottom: 16px;">🚀</div>
                             <h3 style="margin: 0 0 16px 0; color: #232f3e; font-size: 24px;">Search Limit Reached!</h3>
                             <p style="color: #666; margin-bottom: 24px; line-height: 1.5;">
-                                You've used your 3 free searches. Sign up to get <strong>10 more free searches per day</strong>, or upgrade to Pro for unlimited access.
+                                You've reached your search limit. ${userApiKey ? 'Upgrade to Pro for unlimited searches!' : 'Register for 10 free searches per day, or upgrade to Pro for unlimited access.'}
                             </p>
                             <div style="display: flex; gap: 12px; justify-content: center; margin-bottom: 16px;">
-                                <a href="https://marketplace.cloudnestle.com/register" 
+                                <a href="${upgradeUrl}" 
                                    style="background: #ff9900; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; transition: background 0.3s;"
                                    onmouseover="this.style.background='#ec7211'" 
                                    onmouseout="this.style.background='#ff9900'">
-                                    Get 10 Free Searches
-                                </a>
-                                <a href="https://marketplace.cloudnestle.com/products/aws-solution-finder" 
-                                   style="background: #232f3e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600;">
-                                    Upgrade to Pro ($29)
+                                    ${userApiKey ? 'Upgrade to Pro' : 'Get Free Account'}
                                 </a>
                             </div>
                             <button onclick="this.parentElement.parentElement.parentElement.remove()" 
@@ -174,12 +213,19 @@
             addMessage(`Searching ${org} repositories...`, false);
             
             try {
+                // Prepare request body
+                const requestBody = { query, org };
+                if (userApiKey) {
+                    requestBody.apikey = userApiKey;
+                }
+
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        ...(userApiKey && { 'x-api-key': userApiKey })
                     },
-                    body: JSON.stringify({ query, org })
+                    body: JSON.stringify(requestBody)
                 });
 
                 const data = await response.json();
@@ -191,10 +237,10 @@
                 if (response.status === 429) {
                     // Usage limit exceeded
                     addMessage(data.message || 'Usage limit exceeded', false);
-                    showUpgradeModal();
+                    showUpgradeModal(data.upgrade_url || 'https://marketplace.cloudnestle.com/register');
                     btn.disabled = true;
                     input.disabled = true;
-                    input.placeholder = "Sign up to continue searching...";
+                    input.placeholder = "Upgrade to continue searching...";
                     return;
                 }
                 
@@ -213,7 +259,11 @@
         }
 
         // Welcome message
-        addMessage('Hello! I can help you find AWS sample repositories. Try asking: "Show me serverless Lambda examples with DynamoDB"', false);
+        if (userApiKey) {
+            addMessage('Hello! You are logged in with your API key. I can help you find AWS sample repositories. Try asking: "Show me serverless Lambda examples with DynamoDB"', false);
+        } else {
+            addMessage('Hello! I can help you find AWS sample repositories. You have 3 free searches. Try asking: "Show me serverless Lambda examples with DynamoDB"', false);
+        }
     </script>
 </body>
 </html>

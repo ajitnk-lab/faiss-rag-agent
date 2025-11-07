@@ -18,16 +18,72 @@ s3_client = None
 bedrock_client = None
 dynamodb = None
 
+def get_user_from_api_key(api_key: str):
+    """Get user info from marketplace API key."""
+    global dynamodb
+    
+    if dynamodb is None:
+        dynamodb = boto3.resource('dynamodb')
+    
+    # Marketplace user table
+    user_table = dynamodb.Table('MP-1759859484941-DataStackUserTableDAF10CB8-32RMTH8QZDCX')
+    
+    try:
+        # Scan for user with this API key (in production, use GSI for better performance)
+        response = user_table.scan(
+            FilterExpression='awsFinderApiKey = :api_key',
+            ExpressionAttributeValues={':api_key': api_key}
+        )
+        
+        if response['Items']:
+            user = response['Items'][0]
+            return {
+                'user_id': user['userId'],
+                'email': user.get('email', 'unknown'),
+                'tier': user.get('awsFinderTier', 'free'),
+                'role': user.get('role', 'customer')
+            }
+        return None
+        
+    except Exception as e:
+        print(f"Error looking up API key: {e}")
+        return None
+
 def get_user_id(event):
-    """Generate user ID from IP and user agent."""
+    """Generate user ID from API key or fallback to IP."""
+    # Check for API key in query parameters or headers
+    api_key = None
+    
+    # Try query parameters first
+    if 'queryStringParameters' in event and event['queryStringParameters']:
+        api_key = event['queryStringParameters'].get('apikey')
+    
+    # Try headers as fallback
+    if not api_key and 'headers' in event:
+        api_key = event['headers'].get('x-api-key') or event['headers'].get('Authorization', '').replace('Bearer ', '')
+    
+    # Try request body
+    if not api_key:
+        try:
+            if 'body' in event:
+                body = json.loads(event['body']) if isinstance(event['body'], str) else event['body']
+                api_key = body.get('apikey')
+        except:
+            pass
+    
+    if api_key:
+        user_info = get_user_from_api_key(api_key)
+        if user_info:
+            return user_info['user_id'], user_info['tier'], user_info
+    
+    # Fallback to IP-based identification for anonymous users
     source_ip = event.get('requestContext', {}).get('identity', {}).get('sourceIp', 'unknown')
     user_agent = event.get('headers', {}).get('User-Agent', '')
-    
-    # Create simple fingerprint
     fingerprint = f"{source_ip}_{hash(user_agent) % 10000}"
-    return fingerprint
+    
+    return fingerprint, 'anonymous', None
 
-def check_usage_limits(user_id: str, tier: str = 'anonymous'):
+def check_usage_limits(user_id: str, tier: str = 'anonymous', user_info: dict = None):
     """Check if user has exceeded usage limits."""
     global dynamodb
     
@@ -47,22 +103,31 @@ def check_usage_limits(user_id: str, tier: str = 'anonymous'):
         if hasattr(current_count, '__float__'):  # Handle Decimal objects
             current_count = int(current_count)
         
-        # Define limits
+        # Define limits based on tier
         limits = {
-            'anonymous': 3,
-            'free': 10,
-            'pro': float('inf')
+            'anonymous': 3,      # Anonymous users: 3 searches total
+            'free': 10,          # Registered customers: 10 searches/day
+            'pro': float('inf')  # Pro customers: unlimited
         }
         
         limit = limits.get(tier, 3)
-        searches_remaining = max(0, limit - current_count)
+        searches_remaining = max(0, limit - current_count) if limit != float('inf') else float('inf')
+        
+        # Add user context for registered users
+        user_context = {}
+        if user_info:
+            user_context = {
+                'email': user_info.get('email'),
+                'role': user_info.get('role')
+            }
         
         return {
             'allowed': current_count < limit,
             'searches_used': current_count,
-            'searches_remaining': searches_remaining,
+            'searches_remaining': searches_remaining if searches_remaining != float('inf') else 'unlimited',
             'tier': tier,
-            'upgrade_needed': current_count >= limit
+            'upgrade_needed': current_count >= limit,
+            'user_context': user_context
         }
         
     except Exception as e:
@@ -71,9 +136,10 @@ def check_usage_limits(user_id: str, tier: str = 'anonymous'):
         return {
             'allowed': True,
             'searches_used': 0,
-            'searches_remaining': 3,
+            'searches_remaining': 3 if tier == 'anonymous' else 10,
             'tier': tier,
-            'upgrade_needed': False
+            'upgrade_needed': False,
+            'user_context': {}
         }
 
 def increment_usage(user_id: str, tier: str = 'anonymous'):
@@ -266,16 +332,25 @@ def lambda_handler(event, context):
             }
         
         # Get user ID and check usage limits
-        user_id = get_user_id(event)
-        usage_info = check_usage_limits(user_id, 'anonymous')
+        user_id, tier, user_info = get_user_id(event)
+        usage_info = check_usage_limits(user_id, tier, user_info)
         
         print(f"🔍 Query: {query}")
         print(f"🏢 Organization: {org}")
         print(f"👤 User: {user_id}")
+        print(f"🎯 Tier: {tier}")
         print(f"📊 Usage: {usage_info}")
         
         # Check if user has exceeded limits
         if not usage_info['allowed']:
+            upgrade_message = "You have reached your search limit."
+            if tier == 'anonymous':
+                upgrade_message += " Register for 10 free searches per day!"
+                upgrade_url = 'https://marketplace.cloudnestle.com/register'
+            else:
+                upgrade_message += " Upgrade to Pro for unlimited searches!"
+                upgrade_url = 'https://marketplace.cloudnestle.com/solutions/61deb2fb-6e5e-4cda-ac5d-ff20202a8788'
+            
             return {
                 'statusCode': 429,
                 'headers': {
@@ -284,19 +359,20 @@ def lambda_handler(event, context):
                 },
                 'body': json.dumps({
                     'error': 'Usage limit exceeded',
-                    'message': 'You have reached your free search limit. Sign up for more searches!',
+                    'message': upgrade_message,
                     'usage': usage_info,
-                    'upgrade_url': 'https://marketplace.cloudnestle.com/register'
+                    'upgrade_url': upgrade_url
                 })
             }
         
         # Increment usage count
-        increment_usage(user_id, 'anonymous')
+        increment_usage(user_id, tier)
         
         # Update usage info after increment
         usage_info['searches_used'] = int(usage_info['searches_used']) + 1
-        usage_info['searches_remaining'] = max(0, int(usage_info['searches_remaining']) - 1)
-        usage_info['upgrade_needed'] = usage_info['searches_remaining'] == 0
+        if usage_info['searches_remaining'] != 'unlimited':
+            usage_info['searches_remaining'] = max(0, int(usage_info['searches_remaining']) - 1)
+            usage_info['upgrade_needed'] = usage_info['searches_remaining'] == 0
         
         # Load index for requested org
         index, metadata = load_index_for_org(org)
