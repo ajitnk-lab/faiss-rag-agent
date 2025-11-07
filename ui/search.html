@@ -29,11 +29,48 @@
             <p>Powered by Bedrock Agent + FAISS + Nova Pro</p>
         </div>
         <div class="chat-box" id="chatBox"></div>
+        <div class="filters-area" style="background: white; padding: 15px; border: 1px solid #ddd; border-bottom: none;">
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                <label style="font-weight: 600; color: #333;">Organization:</label>
+                <select id="orgSelector" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                    <option value="all">All Organizations (8,502 repos)</option>
+                    <option value="aws-samples">AWS Samples (7,552 repos)</option>
+                    <option value="awslabs">AWS Labs (950 repos)</option>
+                </select>
+                
+                <label style="font-weight: 600; color: #333; margin-left: 15px;">Service:</label>
+                <select id="serviceFilter" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                    <option value="">All Services</option>
+                    <option value="lambda">Lambda</option>
+                    <option value="s3">S3</option>
+                    <option value="dynamodb">DynamoDB</option>
+                    <option value="ec2">EC2</option>
+                    <option value="ecs">ECS</option>
+                    <option value="eks">EKS</option>
+                    <option value="rds">RDS</option>
+                    <option value="api-gateway">API Gateway</option>
+                    <option value="cloudformation">CloudFormation</option>
+                    <option value="cdk">CDK</option>
+                    <option value="bedrock">Bedrock</option>
+                    <option value="sagemaker">SageMaker</option>
+                </select>
+                
+                <label style="font-weight: 600; color: #333; margin-left: 15px;">Language:</label>
+                <select id="languageFilter" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                    <option value="">All Languages</option>
+                    <option value="python">Python</option>
+                    <option value="javascript">JavaScript</option>
+                    <option value="typescript">TypeScript</option>
+                    <option value="java">Java</option>
+                    <option value="go">Go</option>
+                    <option value="csharp">C#</option>
+                    <option value="rust">Rust</option>
+                </select>
+                
+                <button onclick="clearFilters()" style="padding: 8px 12px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Clear Filters</button>
+            </div>
+        </div>
         <div class="input-area">
-            <select id="orgSelector" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
-                <option value="aws-samples">AWS Samples (7,552 repos)</option>
-                <option value="awslabs">AWS Labs (950 repos)</option>
-            </select>
             <input type="text" id="queryInput" placeholder="Ask about AWS repositories..." onkeypress="if(event.key==='Enter') sendMessage()">
             <button onclick="sendMessage()" id="sendBtn">Send</button>
         </div>
@@ -48,8 +85,51 @@
             return urlParams.get('apikey');
         }
 
+        // Check if user is from marketplace
+        function isMarketplaceUser() {
+            // Check URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('marketplace') === 'true') {
+                return true;
+            }
+            
+            // Check referrer
+            if (document.referrer && document.referrer.includes('marketplace.cloudnestle.com')) {
+                return true;
+            }
+            
+            // Check for marketplace session cookie
+            const cookies = document.cookie.split(';');
+            for (let cookie of cookies) {
+                if (cookie.trim().startsWith('marketplace_session=')) {
+                    return true;
+                }
+            }
+            
+            // Check localStorage for marketplace flag
+            if (localStorage.getItem('marketplace_user') === 'true') {
+                return true;
+            }
+            
+            return false;
+        }
+
+        // Get marketplace session token
+        function getMarketplaceSession() {
+            const cookies = document.cookie.split(';');
+            for (let cookie of cookies) {
+                if (cookie.trim().startsWith('marketplace_session=')) {
+                    return cookie.split('=')[1].trim();
+                }
+            }
+            return null;
+        }
+
         // Store API key for session
         let userApiKey = getApiKeyFromUrl();
+        let isFromMarketplace = isMarketplaceUser();
+        let marketplaceSession = getMarketplaceSession();
+        
         if (userApiKey) {
             localStorage.setItem('aws_finder_api_key', userApiKey);
             // Clean URL to remove API key from address bar
@@ -60,6 +140,26 @@
             // Try to get from localStorage
             userApiKey = localStorage.getItem('aws_finder_api_key');
         }
+        
+        // Store marketplace flag for future visits
+        if (isFromMarketplace) {
+            localStorage.setItem('marketplace_user', 'true');
+        }
+        
+        // Debug function to check authentication status
+        function debugAuth() {
+            console.log('🔍 Authentication Debug Info:');
+            console.log('- API Key:', userApiKey ? 'Present' : 'None');
+            console.log('- From Marketplace:', isFromMarketplace);
+            console.log('- Marketplace Session:', marketplaceSession ? 'Present' : 'None');
+            console.log('- Referrer:', document.referrer);
+            console.log('- URL Params:', window.location.search);
+            console.log('- Cookies:', document.cookie);
+            console.log('- LocalStorage marketplace_user:', localStorage.getItem('marketplace_user'));
+        }
+        
+        // Call debug function
+        debugAuth();
 
         function showUsageInfo(usage) {
             const usageDiv = document.createElement('div');
@@ -200,31 +300,69 @@
         async function sendMessage() {
             const input = document.getElementById('queryInput');
             const orgSelector = document.getElementById('orgSelector');
+            const serviceFilter = document.getElementById('serviceFilter');
+            const languageFilter = document.getElementById('languageFilter');
             const btn = document.getElementById('sendBtn');
             const query = input.value.trim();
             const org = orgSelector.value;
+            const service = serviceFilter.value;
+            const language = languageFilter.value;
             
             if (!query) return;
+            
+            // Build filter description
+            let filterDesc = '';
+            const filters = [];
+            if (org !== 'all') filters.push(org);
+            if (service) filters.push(service);
+            if (language) filters.push(language);
+            if (filters.length > 0) {
+                filterDesc = ` (filtered by: ${filters.join(', ')})`;
+            }
             
             addMessage(query, true);
             input.value = '';
             btn.disabled = true;
             
-            addMessage(`Searching ${org} repositories...`, false);
+            addMessage(`Searching repositories${filterDesc}...`, false);
             
             try {
-                // Prepare request body
-                const requestBody = { query, org };
+                // Prepare request body with filters
+                const requestBody = { 
+                    query, 
+                    org,
+                    filters: {
+                        service: service || null,
+                        language: language || null
+                    }
+                };
+                
+                // Add marketplace authentication
+                if (isFromMarketplace) {
+                    requestBody.marketplace = 'true';
+                }
+                
                 if (userApiKey) {
                     requestBody.apikey = userApiKey;
                 }
 
+                // Prepare headers
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+                
+                if (userApiKey) {
+                    headers['x-api-key'] = userApiKey;
+                }
+                
+                // Add marketplace session token if available
+                if (marketplaceSession && isFromMarketplace) {
+                    headers['Authorization'] = `Bearer ${marketplaceSession}`;
+                }
+
                 const response = await fetch(API_URL, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...(userApiKey && { 'x-api-key': userApiKey })
-                    },
+                    headers: headers,
                     body: JSON.stringify(requestBody)
                 });
 
@@ -258,9 +396,17 @@
             btn.disabled = false;
         }
 
+        function clearFilters() {
+            document.getElementById('orgSelector').value = 'all';
+            document.getElementById('serviceFilter').value = '';
+            document.getElementById('languageFilter').value = '';
+        }
+
         // Welcome message
         if (userApiKey) {
             addMessage('Hello! You are logged in with your API key. I can help you find AWS sample repositories. Try asking: "Show me serverless Lambda examples with DynamoDB"', false);
+        } else if (isFromMarketplace) {
+            addMessage('Hello! Welcome from CloudNetsle Marketplace! You have 10 free searches per day. I can help you find AWS sample repositories. Try asking: "Show me serverless Lambda examples with DynamoDB"', false);
         } else {
             addMessage('Hello! I can help you find AWS sample repositories. You have 3 free searches. Try asking: "Show me serverless Lambda examples with DynamoDB"', false);
         }

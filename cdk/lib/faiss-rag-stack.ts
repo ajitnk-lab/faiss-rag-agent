@@ -59,6 +59,23 @@ export class FaissRagStack extends cdk.Stack {
       ],
     }));
 
+    // Grant permissions to access marketplace tables
+    queryFunction.addToRolePolicy(new iam.PolicyStatement({
+      actions: [
+        'dynamodb:Scan', 
+        'dynamodb:GetItem', 
+        'dynamodb:Query'
+      ],
+      resources: [
+        // Marketplace user table
+        'arn:aws:dynamodb:us-east-1:039920874011:table/MP-1759859484941-DataStackUserTableDAF10CB8-MM0KVOMUI09Z',
+        // EmailIndex GSI on user table
+        'arn:aws:dynamodb:us-east-1:039920874011:table/MP-1759859484941-DataStackUserTableDAF10CB8-MM0KVOMUI09Z/index/EmailIndex',
+        // Marketplace session table
+        'arn:aws:dynamodb:us-east-1:039920874011:table/MP-1759859484941-DataStackSessionTable8346BE43-1D25U1YXAV1JW'
+      ],
+    }));
+
     // API Gateway
     const api = new apigateway.RestApi(this, 'FaissRagApi', {
       restApiName: 'FAISS RAG Agent API',
